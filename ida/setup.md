@@ -63,3 +63,11 @@ struct Color {
 |---|---|
 | `dword_F26C00` | `il2cpp_domain_get` |
 | `dword_F26D04` | `il2cpp_exception_from_name` |
+
+---
+
+## Renames from CalculateGlobalPosition
+
+| Address | Name |
+|---|---|
+| `sub_4AA310` | `CompleteFenceInternal` |
