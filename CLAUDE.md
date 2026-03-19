@@ -53,3 +53,14 @@ When asked to reverse a Unity function's pseudocode:
 4. Document it following the format in `context/README.md`
 
 Always use types defined in `include/unity.h` (Vector3, Quaternion, etc.).
+
+---
+
+## CRITICAL: External-only objective
+
+**The target is always EXTERNAL** — read-only memory access via `process_vm_readv` from outside the game process.
+
+- **Never** frame practical notes around injection, hooks, or in-process code execution
+- **Never** suggest "just call this function internally" as a practical approach
+- If a function is only useful for injection/internal use, say so clearly and mark it as **context-only** (documented for call chain understanding, not for direct use)
+- External = reading memory offsets, reconstructing values, following pointers — nothing more
