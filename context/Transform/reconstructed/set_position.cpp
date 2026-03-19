@@ -118,4 +118,40 @@ namespace Unity {
         GVBXIWriteObject<float>(node_addr + offsetof(TransformNode, position) + 0x08, local.z);
     }
 
+    // -----------------------------------------------------------------------
+    // Transform::SetLocalPosition  (simplified variant)
+    // Based on reference: get_position_gamesdk.cpp — set_localRotation pattern.
+    //
+    // Writes directly to nodes[index].position without InverseTransformPosition.
+    // This sets the LOCAL position (relative to parent), not world space.
+    // For root transforms (parentIndices[index] == -1), local == world, so this
+    // is equivalent to SetPosition. For non-root transforms, the position written
+    // is interpreted in the parent's coordinate space.
+    //
+    // Use this when:
+    //   - You already have the local position
+    //   - The transform is a root (teleporting a character's root bone)
+    //   - You don't need world-space accuracy for non-root bones
+    // -----------------------------------------------------------------------
+    void SetLocalPosition(uintptr_t managed_transform, const Vector3& local_pos) {
+        // Object::GetCachedPtr — m_CachedPtr at +0x08 of any IL2CPP managed object
+        const uintptr_t native = GVBXIReadObject<uint32_t>(managed_transform + 0x08);
+        if (!native) return;
+
+        // TransformAccessReadOnly embedded at nativeTransform + 0x20 (armeabi-v7a)
+        const auto access = GVBXIReadObject<TransformAccessReadOnly>(native + 0x20);
+        if (!access.hierarchy || access.index < 0) return;
+
+        // TransformHierarchy: nodes at +0x10 (armeabi-v7a)
+        const uint32_t nodes_ptr = GVBXIReadObject<uint32_t>(access.hierarchy + 0x10);
+        if (!nodes_ptr) return;
+
+        // Write xyz directly to nodes[index].position (+0x00 in TransformNode)
+        // Same pattern as: GVBXIWriteObject<Quaternion>(nodes + sizeof(TransformNode) * index + 0x10, rot)
+        const uint32_t node_addr = nodes_ptr + access.index * sizeof(TransformNode);
+        GVBXIWriteObject<float>(node_addr + 0x00, local_pos.x);
+        GVBXIWriteObject<float>(node_addr + 0x04, local_pos.y);
+        GVBXIWriteObject<float>(node_addr + 0x08, local_pos.z);
+    }
+
 } // namespace Unity
