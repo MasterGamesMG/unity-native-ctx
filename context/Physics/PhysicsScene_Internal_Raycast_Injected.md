@@ -153,11 +153,41 @@ __int64 __fastcall UnityEngine_PhysicsScene__Internal_RaycastTest_Injected(
 
 ---
 
+## Unity::PhysicsQuery — source context
+
+Confirmed from `UnityCsReference/Modules/Physics/ScriptBindings/PhysicsScene.bindings.cs`:
+
+```csharp
+[NativeHeader("Modules/Physics/PhysicsQuery.h")]           // ← PhysicsQuery C++ class lives here
+[NativeHeader("Modules/Physics/Public/PhysicsSceneHandle.h")]
+[StructLayout(LayoutKind.Sequential)]
+public partial struct PhysicsScene : IEquatable<PhysicsScene>
+{
+    private int m_Handle;   // ← confirmed: PhysicsScene is just an int
+    ...
+    [FreeFunction("Physics::RaycastTest")]
+    extern private static bool Internal_RaycastTest(PhysicsScene physicsScene, Ray ray,
+        float maxDistance, int layerMask, QueryTriggerInteraction queryTriggerInteraction);
+
+    [FreeFunction("Physics::Raycast")]
+    extern private static bool Internal_Raycast(PhysicsScene physicsScene, Ray ray,
+        float maxDistance, ref RaycastHit hit, int layerMask, QueryTriggerInteraction queryTriggerInteraction);
+}
+```
+
+| Binding attribute | Meaning |
+|---|---|
+| `[FreeFunction("Physics::Raycast")]` | C++ glue function name used by binding generator for `Internal_Raycast` |
+| `[FreeFunction("Physics::RaycastTest")]` | C++ glue function name for `Internal_RaycastTest` |
+| `[NativeHeader("Modules/Physics/PhysicsQuery.h")]` | Confirms `PhysicsQuery` is a real C++ class defined in that header |
+
+The engine IDB shows the actual implementation behind these `FreeFunction` wrappers as `Unity::PhysicsQuery::Raycast` — a method on the `PhysicsQuery` object embedded inside `PhysicsManager`.
+
 ## Function renames (Android IDB — libunity.so)
 
 | Original | Rename | Reason |
 |---|---|---|
-| `sub_6441A0` | `Unity::PhysicsQuery::Raycast` | Confirmed by engine IDB symbol |
+| `sub_6441A0` | `Unity::PhysicsQuery::Raycast` | Confirmed by engine IDB symbol; defined in `Modules/Physics/PhysicsQuery.h` |
 
 ---
 
@@ -204,7 +234,7 @@ PhysX: PxScene::raycast(...)
 
 - For a **visibility check (ESP)**: use `Internal_RaycastTest_Injected` — no `RaycastHit` allocation, lighter, only returns bool
 - For **hit position / collider info**: use `Internal_Raycast_Injected` — populates full `RaycastHit`
-- `PhysicsScene` in Unity 2018 is a plain struct: `struct PhysicsScene { int handle; }` — `*a1` gives the scene index
+- `PhysicsScene` confirmed from source: `[StructLayout(LayoutKind.Sequential)] partial struct PhysicsScene { private int m_Handle; }` — `*a1` gives the scene handle int
 - `ThreadAndSerializationSafeCheck` on the engine ensures this is called from the main thread — physics queries in Unity 2018 are not thread-safe
 - `long double` for `a5` in the IL2CPP stub is an **IDA artifact** — register `x4` holds a 32-bit `QueryTriggerInteraction` enum int; IDA picks up `long double` due to ARM64 register heuristics
 - `qword_C398740` starts as NULL and is set on the first call — thread safety of this caching is not guaranteed (Unity assumes single-threaded managed execution)
@@ -217,3 +247,4 @@ PhysX: PxScene::raycast(...)
 - [Unity 2018.4 — RaycastHit](https://docs.unity3d.com/2018.4/Documentation/ScriptReference/RaycastHit.html)
 - [Unity 2018.4 — QueryTriggerInteraction](https://docs.unity3d.com/2018.4/Documentation/ScriptReference/QueryTriggerInteraction.html)
 - [Unity 2018.4 — Physics.Raycast](https://docs.unity3d.com/2018.4/Documentation/ScriptReference/Physics.Raycast.html)
+- [UnityCsReference — PhysicsScene.bindings.cs (master)](https://github.com/Unity-Technologies/UnityCsReference/blob/master/Modules/Physics/ScriptBindings/PhysicsScene.bindings.cs) — source of FreeFunction names and PhysicsScene struct layout
