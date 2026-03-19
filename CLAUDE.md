@@ -26,6 +26,9 @@ include/
 
 src/
   memory.h        ← External memory reading wrapper
+
+ida/
+  setup.md        ← IDA Pro configuration: local types, renames, function pointers
 ```
 
 ---
